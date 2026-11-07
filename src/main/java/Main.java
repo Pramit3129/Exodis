@@ -17,20 +17,54 @@ public class Main {
           // Since the tester restarts your program quite often, setting SO_REUSEADDR
           // ensures that we don't run into 'Address already in use' errors
           serverSocket.setReuseAddress(true);
-          // Wait for connection from client.
-          clientSocket = serverSocket.accept();
-//            System.out.println("Client Connected");
-          BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), StandardCharsets.UTF_8));
-          BufferedOutputStream output = new BufferedOutputStream(clientSocket.getOutputStream());
-          String message;
-            while ((message = input.readLine()) != null){
-                System.out.println("Message: "+message);
 
-                // Only respond when the line is the actual PING command
-                if (message.equalsIgnoreCase("PING")) {
-                    output.write("+PONG\r\n".getBytes(StandardCharsets.UTF_8));
-                    output.flush();
-                }
+            while (true) {
+                Socket client = serverSocket.accept();
+
+//                System.out.println("New Client Connected: "
+//                        + client.getRemoteSocketAddress());
+
+                Thread t = new Thread(() -> {
+                    try (client) {
+                        BufferedReader input = new BufferedReader(
+                                new InputStreamReader(
+                                        client.getInputStream(),
+                                        StandardCharsets.UTF_8
+                                )
+                        );
+
+                        BufferedOutputStream output =
+                                new BufferedOutputStream(
+                                        client.getOutputStream()
+                                );
+
+                        String message;
+
+                        while ((message = input.readLine()) != null) {
+//                            System.out.println("Received Message from: "+client.getRemoteSocketAddress()+" "+ message);
+
+                            if (message.equals("PING")) {
+                                output.write("+PONG\r\n".getBytes(
+                                        StandardCharsets.UTF_8));
+                            }
+//                            else {
+//                                output.write("-ERR unknown command\r\n".getBytes(
+//                                        StandardCharsets.UTF_8));
+//                            }
+
+                            output.flush();
+                        }
+//                        System.out.println("Client Disconnected: " + client.getRemoteSocketAddress());
+                    } catch (Exception e) {
+//                        System.out.println(
+//                                "Client Disconnected (connection error): "
+//                                        + client.getRemoteSocketAddress()
+//                        );
+                        e.printStackTrace();
+                    }
+                });
+
+                t.start();
             }
 
         } catch (IOException e) {
