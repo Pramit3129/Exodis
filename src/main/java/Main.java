@@ -19,17 +19,19 @@ public class Main {
           serverSocket.setReuseAddress(true);
           // Wait for connection from client.
           clientSocket = serverSocket.accept();
-            System.out.println("Client Connected");
+//            System.out.println("Client Connected");
           BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), StandardCharsets.UTF_8));
           BufferedOutputStream output = new BufferedOutputStream(clientSocket.getOutputStream());
           String message;
-          while ((message = input.readLine()) != null){
-              System.out.println("Message: "+message);
-              output.write("+PONG\r\n".getBytes(
-                      StandardCharsets.UTF_8));
-              output.flush();
+            while ((message = input.readLine()) != null){
+                System.out.println("Message: "+message);
 
-          }
+                // Only respond when the line is the actual PING command
+                if (message.equalsIgnoreCase("PING")) {
+                    output.write("+PONG\r\n".getBytes(StandardCharsets.UTF_8));
+                    output.flush();
+                }
+            }
 
         } catch (IOException e) {
           System.out.println("IOException: " + e.getMessage());
