@@ -26,32 +26,29 @@ public class Main {
 
                 Thread t = new Thread(() -> {
                     try (client) {
-                        BufferedReader input = new BufferedReader(
-                                new InputStreamReader(
-                                        client.getInputStream(),
-                                        StandardCharsets.UTF_8
-                                )
-                        );
+                        InputStream input = new BufferedInputStream(client.getInputStream());
+                        OutputStream output = new BufferedOutputStream(client.getOutputStream());
 
-                        BufferedOutputStream output =
-                                new BufferedOutputStream(
-                                        client.getOutputStream()
-                                );
+                        String[] command;
 
-                        String message;
-
-                        while ((message = input.readLine()) != null) {
+                        while ((command = readRESPArray(input)) != null) {
 //                            System.out.println("Received Message from: "+client.getRemoteSocketAddress()+" "+ message);
-
-                            if (message.equals("PING")) {
-                                output.write("+PONG\r\n".getBytes(
+                            String curCommand = command[0];
+                            if (curCommand.equalsIgnoreCase("PING")) {
+                                output.write("+PONG\r\n".getBytes(StandardCharsets.UTF_8));
+                                output.flush();
+                            }else if(curCommand.equalsIgnoreCase("ECHO")){
+                                if(command.length != 2){
+                                    output.write("-ERR wrong number of arguments\r\n".getBytes(StandardCharsets.UTF_8));
+                                    output.flush();
+                                    continue;
+                                }
+                                writeBulkString(output, command[1]);
+                            }
+                            else {
+                                output.write("-ERR unknown command\r\n".getBytes(
                                         StandardCharsets.UTF_8));
                             }
-//                            else {
-//                                output.write("-ERR unknown command\r\n".getBytes(
-//                                        StandardCharsets.UTF_8));
-//                            }
-
                             output.flush();
                         }
 //                        System.out.println("Client Disconnected: " + client.getRemoteSocketAddress());
@@ -78,5 +75,100 @@ public class Main {
             System.out.println("IOException: " + e.getMessage());
           }
         }
+  }
+  static String readLine(InputStream input) throws IOException {
+      ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+      while (true){
+          int b = input.read();
+          if(b == -1){
+              throw new EOFException("Unexpected end of stream");
+          }
+          if(b == '\r'){
+              int nextBit = input.read();
+              if(nextBit != '\n'){
+                  throw new IOException("Invalid CRLF");
+              }
+              return buffer.toString(StandardCharsets.UTF_8);
+          }
+          buffer.write(b);
+      }
+  }
+
+  static byte[] readExactly(InputStream input, int maxReadLength) throws IOException {
+      if (maxReadLength < 0) {
+          throw new IllegalArgumentException("Negative length");
+      }
+
+      byte[] data = new byte[maxReadLength];
+
+      int offset = 0;
+
+      while (offset < maxReadLength){
+          int read = input.read(data, offset, maxReadLength - offset);
+
+          if(read == -1){
+              throw new EOFException("Incomplete Bulk Stream");
+          }
+
+          offset += read;
+
+      }
+
+      return data;
+  }
+
+  static String readBulkString(InputStream input) throws IOException {
+    int prefix = input.read();
+    if(prefix != '$'){
+        throw new IOException("Expected bulk string");
+    }
+    int sizeOfData = Integer.parseInt(readLine(input));
+
+    if(sizeOfData == -1){
+        return null;
+    }
+
+    byte[] data = readExactly(input, sizeOfData);
+
+    int cr = input.read();
+    int lf = input.read();
+
+    if (cr != '\r' || lf != '\n') {
+      throw new IOException("Invalid bulk string terminator");
+    }
+
+    return new String(data, StandardCharsets.UTF_8);
+  }
+
+  static void writeBulkString(OutputStream out, String value) throws IOException {
+        byte[] data = value.getBytes(StandardCharsets.UTF_8);
+        String header = "$" + data.length + "\r\n";
+
+        out.write(header.getBytes(StandardCharsets.UTF_8));
+        out.write(data);
+        out.write("\r\n".getBytes(StandardCharsets.UTF_8));
+        out.flush();
+  }
+
+  static String[] readRESPArray(InputStream input) throws IOException {
+      // * <LengthOfArray> \r\n $ <LengthOfData> \r\n data \r\n
+
+      int prefix = input.read();
+
+      if(prefix == -1) return null;
+
+      if(prefix != '*'){
+          throw new IOException("Expected RESP array");
+      }
+
+      int commandsLength = Integer.parseInt(readLine(input));
+
+      String[] commands = new String[commandsLength];
+
+      for(int i = 0; i < commandsLength; i++){
+          commands[i] = readBulkString(input);
+      }
+
+      return commands;
   }
 }
