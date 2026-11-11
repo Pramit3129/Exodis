@@ -12,6 +12,36 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Main {
+    public static class RedisValue{
+        private String val;
+        private long expiry;
+
+        public RedisValue(String val, long expiry){
+            this.val = val;
+            this.expiry = expiry;
+        }
+
+        public RedisValue(String val){
+            this.val = val;
+            this.expiry = 0;
+        }
+
+        public String getVal(){
+            return this.val;
+        }
+        public long getExpiry(){
+            return this.expiry;
+        }
+    }
+    static class SetOptions {
+
+        boolean nx = false;
+        boolean xx = false;
+        boolean get = false;
+        boolean keepTtl = false;
+
+        long expiresAt = 0;
+    }
 
     public static void main(String[] args) {
         System.out.println("Logs from your program will appear here!");
@@ -19,7 +49,7 @@ public class Main {
         int port = 6379;
 
         // Shared database for all client connections
-        ConcurrentHashMap<String, String> mp = new ConcurrentHashMap<>();
+        ConcurrentHashMap<String, RedisValue> mp = new ConcurrentHashMap<>();
 
         try (ServerSocket serverSocket = new ServerSocket()) {
 
@@ -41,7 +71,7 @@ public class Main {
 
     static void handleClient(
             Socket client,
-            ConcurrentHashMap<String, String> mp) {
+            ConcurrentHashMap<String, RedisValue> mp) {
 
         try (client;
              InputStream input = new BufferedInputStream(client.getInputStream());
@@ -82,6 +112,7 @@ public class Main {
                     writeBulkString(output, command[1]);
 
                     // GET
+
                 } else if (curCommand.equalsIgnoreCase("GET")) {
 
                     if (command.length != 2) {
@@ -90,27 +121,21 @@ public class Main {
                     }
 
                     String key = command[1];
-                    String value = mp.get(key);
 
-                    if (value != null) {
-                        writeBulkString(output, value);
-                    } else {
-                        writeNullBulkString(output);
+                    synchronized (mp) {
+
+                        RedisValue value = getLiveEntry(mp, key);
+
+                        if (value != null) {
+                            writeBulkString(output, value.getVal());
+                        } else {
+                            writeNullBulkString(output);
+                        }
                     }
+                }
+                else if (curCommand.equalsIgnoreCase("SET")) {
 
-                    // SET
-                } else if (curCommand.equalsIgnoreCase("SET")) {
-
-                    if (command.length != 3) {
-                        writeError(output, "ERR wrong number of arguments");
-                        continue;
-                    }
-
-                    String key = command[1];
-                    String value = command[2];
-
-                    mp.put(key, value);
-                    writeSimpleString(output, "OK");
+                    executeSet(output, mp, command);
 
                     // Unknown command
                 } else {
@@ -270,7 +295,7 @@ public class Main {
         int prefix = input.read();
 
         if (prefix == -1) {
-            return null; // Client disconnected cleanly
+            return null;
         }
 
         if (prefix != '*') {
@@ -297,4 +322,234 @@ public class Main {
 
         return commands;
     }
+
+
+
+    static RedisValue getLiveEntry(ConcurrentHashMap<String, RedisValue> mp, String key) {
+
+        RedisValue entry = mp.get(key);
+
+        if (entry == null) {
+            return null;
+        }
+
+        if (entry.getExpiry() != 0 &&
+                System.currentTimeMillis() >= entry.getExpiry()) {
+
+            mp.remove(key, entry);
+
+            return null;
+        }
+
+        return entry;
+    }
+
+
+    static SetOptions parseSetOptions(String[] command) throws IOException {
+
+        SetOptions options = new SetOptions();
+
+        boolean conditionSpecified = false;
+        boolean expirationSpecified = false;
+
+        int i = 3;
+
+        while (i < command.length) {
+
+            String option = command[i].toUpperCase();
+
+            switch (option) {
+
+                case "NX":
+
+                    if (conditionSpecified) {
+                        throw new IOException("ERR syntax error");
+                    }
+
+                    options.nx = true;
+                    conditionSpecified = true;
+
+                    i++;
+                    break;
+
+                case "XX":
+
+                    if (conditionSpecified) {
+                        throw new IOException("ERR syntax error");
+                    }
+
+                    options.xx = true;
+                    conditionSpecified = true;
+
+                    i++;
+                    break;
+
+                case "GET":
+
+                    if (options.get) {
+                        throw new IOException("ERR syntax error");
+                    }
+
+                    options.get = true;
+
+                    i++;
+                    break;
+
+                case "KEEPTTL":
+
+                    if (expirationSpecified) {
+                        throw new IOException("ERR syntax error");
+                    }
+
+                    options.keepTtl = true;
+                    expirationSpecified = true;
+
+                    i++;
+                    break;
+
+                case "EX":
+                case "PX":
+                case "EXAT":
+                case "PXAT":
+
+                    if (expirationSpecified) {
+                        throw new IOException("ERR syntax error");
+                    }
+
+                    if (i + 1 >= command.length) {
+                        throw new IOException("ERR syntax error");
+                    }
+
+                    long number;
+
+                    try {
+                        number = Long.parseLong(command[i + 1]);
+                    } catch (NumberFormatException e) {
+                        throw new IOException("ERR invalid expire time");
+                    }
+
+                    if (number <= 0) {
+                        throw new IOException("ERR invalid expire time");
+                    }
+
+                    try {
+
+                        switch (option) {
+
+                            case "EX":
+                                options.expiresAt =
+                                        Math.addExact(
+                                                System.currentTimeMillis(),
+                                                Math.multiplyExact(number, 1000L)
+                                        );
+                                break;
+
+                            case "PX":
+                                options.expiresAt =
+                                        Math.addExact(
+                                                System.currentTimeMillis(),
+                                                number
+                                        );
+                                break;
+
+                            case "EXAT":
+                                options.expiresAt =
+                                        Math.multiplyExact(number, 1000L);
+                                break;
+
+                            case "PXAT":
+                                options.expiresAt = number;
+                                break;
+                        }
+
+                    } catch (ArithmeticException e) {
+                        throw new IOException("ERR invalid expire time");
+                    }
+
+                    expirationSpecified = true;
+
+                    i += 2;
+                    break;
+
+                default:
+                    throw new IOException("ERR syntax error");
+            }
+        }
+
+        return options;
+    }
+
+
+    static void executeSet(OutputStream output, ConcurrentHashMap<String, RedisValue> mp, String[] command) throws IOException {
+
+        if (command.length < 3) {
+            writeError(output, "ERR wrong number of arguments");
+            return;
+        }
+
+        String key = command[1];
+        String value = command[2];
+
+        SetOptions options;
+
+        try {
+            options = parseSetOptions(command);
+        } catch (IOException e) {
+            writeError(output, e.getMessage());
+            return;
+        }
+
+        synchronized (mp) {
+
+            // 1. Read existing live entry
+            RedisValue oldEntry = getLiveEntry(mp, key);
+
+            // 2. Save previous value for GET
+            String oldValue = oldEntry == null ? null : oldEntry.getVal();
+
+            // 3. Evaluate NX
+            if (options.nx && oldEntry != null) {
+
+                if (options.get) {
+                    writeBulkString(output, oldValue);
+                } else {
+                    writeNullBulkString(output);
+                }
+
+                return;
+            }
+
+            // 4. Evaluate XX
+            if (options.xx && oldEntry == null) {
+
+                if (options.get) {
+                    writeBulkString(output, null);
+                } else {
+                    writeNullBulkString(output);
+                }
+
+                return;
+            }
+
+            // 5. Determine new expiry
+            long newExpiresAt = options.expiresAt;
+
+            if (options.keepTtl && oldEntry != null) {
+                newExpiresAt = oldEntry.getExpiry();
+            }
+
+            // 6. Replace or create entry
+            mp.put(key, new RedisValue(value, newExpiresAt));
+
+            // 7. Return response
+            if (options.get) {
+                writeBulkString(output, oldValue);
+            } else {
+                writeSimpleString(output, "OK");
+            }
+        }
+    }
+
 }
+
+
