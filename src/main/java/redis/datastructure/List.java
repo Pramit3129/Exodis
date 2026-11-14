@@ -30,6 +30,20 @@ public class List{
         return this.len;
     }
 
+    public int enque(String ele){
+        LLNode newNode = new LLNode(ele);
+
+        if (this.head == null) {
+            this.head = newNode;
+            this.tail = newNode;
+        } else {
+            newNode.next = this.head;
+            this.head = newNode;
+        }
+        this.len++;
+        return this.len;
+    }
+
     public String[] getEle(int start, int stop){
 
         if(stop < 0){

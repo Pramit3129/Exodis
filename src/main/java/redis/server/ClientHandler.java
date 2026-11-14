@@ -7,8 +7,7 @@ import java.io.*;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static redis.command.ListCommands.executeLRANGE;
-import static redis.command.ListCommands.executeRpush;
+import static redis.command.ListCommands.*;
 import static redis.command.SetCommand.executeSet;
 import static redis.protocol.RespReader.readRESPArray;
 import static redis.protocol.RespWriter.*;
@@ -64,6 +63,8 @@ public final class ClientHandler {
                      executeRpush(output, command, listMap);
                 }else if(curCommand.equalsIgnoreCase("LRANGE")){
                     executeLRANGE(output, command, listMap);
+                }else if(curCommand.equalsIgnoreCase("LPUSH")){
+                    executeLpush(output, command, listMap);
                 }
                 else {
                     writeError(output, "ERR unknown command");
