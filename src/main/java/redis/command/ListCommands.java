@@ -48,6 +48,9 @@ public final class ListCommands {
         int start = Integer.parseInt(command[2]);
         int stop = Integer.parseInt(command[3]);
         List list = listMap.get(listName);
+        if(list == null){
+            writeRESPArray(output, new String[]{});
+        }
         writeRESPArray(output, list.getEle(start, stop));
     }
 }
