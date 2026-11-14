@@ -1,4 +1,4 @@
-import redis.datastructure.List;
+import redis.datastructure.RedisList;
 import redis.model.RedisValue;
 
 import java.io.*;
@@ -16,7 +16,7 @@ public class Main {
         System.out.println("Logs from your program will appear here!");
         int port = 6379;
         ConcurrentHashMap<String, RedisValue> mp = new ConcurrentHashMap<>();
-        ConcurrentHashMap<String, List> listMap = new ConcurrentHashMap<>();
+        ConcurrentHashMap<String, RedisList> listMap = new ConcurrentHashMap<>();
         ExecutorService threadPool = Executors.newCachedThreadPool();
 
 

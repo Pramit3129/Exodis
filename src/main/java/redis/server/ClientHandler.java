@@ -1,6 +1,6 @@
 package redis.server;
 
-import redis.datastructure.List;
+import redis.datastructure.RedisList;
 import redis.model.RedisValue;
 
 import java.io.*;
@@ -16,7 +16,7 @@ import static redis.storage.StorageUtils.getLiveEntry;
 public final class ClientHandler {
     private ClientHandler() {}
 
-    public static void handleClient(Socket client, ConcurrentHashMap<String, RedisValue> mp, ConcurrentHashMap<String, List> listMap) {
+    public static void handleClient(Socket client, ConcurrentHashMap<String, RedisValue> mp, ConcurrentHashMap<String, RedisList> listMap) {
         try (client;
              InputStream input = new BufferedInputStream(client.getInputStream());
              OutputStream output = new BufferedOutputStream(client.getOutputStream())) {
@@ -67,6 +67,8 @@ public final class ClientHandler {
                     executeLpush(output, command, listMap);
                 }else if(curCommand.equalsIgnoreCase("LLEN")){
                     executeLLEN(output, command, listMap);
+                }else if(curCommand.equalsIgnoreCase("LPOP")){
+                    executeLPOP(output, command, listMap);
                 }
                 else {
                     writeError(output, "ERR unknown command");

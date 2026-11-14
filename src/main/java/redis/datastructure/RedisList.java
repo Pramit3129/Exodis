@@ -1,20 +1,64 @@
 package redis.datastructure;
 
-import java.util.Arrays;
-
-import static redis.protocol.RespWriter.writeRESPArray;
-
-public class List{
-    public int len;
+public class RedisList {
+    private int len;
     LLNode head;
     LLNode tail;
-    public List(){
+    public RedisList(){
         this.head = null;
         this.tail = null;
         this.len = 0;
     }
 
-    public int push(String ele) {
+    synchronized public int lpush(String[] elements){
+
+        for(String element : elements){
+            enqueInternal(element);
+        }
+
+        return this.len;
+    }
+
+    synchronized public int rpush(String[] elements){
+
+        for(String element : elements){
+            pushInternal(element);
+        }
+
+        return this.len;
+    }
+
+    private void enqueInternal(String ele){
+
+        LLNode newNode = new LLNode(ele);
+
+        if(this.head == null){
+            this.head = newNode;
+            this.tail = newNode;
+        }else{
+            newNode.next = this.head;
+            this.head = newNode;
+        }
+
+        this.len++;
+    }
+
+    private void pushInternal(String ele){
+
+        LLNode newNode = new LLNode(ele);
+
+        if(this.head == null){
+            this.head = newNode;
+            this.tail = newNode;
+        }else{
+            this.tail.next = newNode;
+            this.tail = newNode;
+        }
+
+        this.len++;
+    }
+
+    synchronized public int push(String ele) {
         LLNode newNode = new LLNode(ele);
 
         if (this.head == null) {
@@ -30,7 +74,12 @@ public class List{
         return this.len;
     }
 
-    public int enque(String ele){
+
+    synchronized public int length(){
+        return this.len;
+    }
+
+    synchronized public int enque(String ele){
         LLNode newNode = new LLNode(ele);
 
         if (this.head == null) {
@@ -44,7 +93,7 @@ public class List{
         return this.len;
     }
 
-    public String[] getEle(int start, int stop){
+    synchronized public String[] getEle(int start, int stop){
 
         if(stop < 0){
             stop = this.len + stop;
@@ -84,4 +133,23 @@ public class List{
         return eles;
     }
 
+    synchronized public String Lpop(){
+
+        if(this.head == null){
+            return null;
+        }
+
+        LLNode temp = this.head;
+
+        this.head = this.head.next;
+        temp.next = null;
+
+        this.len--;
+
+        if(this.head == null){
+            this.tail = null;
+        }
+
+        return temp.val;
+    }
 }
