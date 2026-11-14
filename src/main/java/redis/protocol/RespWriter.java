@@ -41,4 +41,16 @@ public final class RespWriter {
         output.write("\r\n".getBytes(StandardCharsets.UTF_8));
         output.flush();
     }
+
+
+    public static void writeRESPArray(OutputStream output, String[] elements) throws IOException {
+        output.write(("*" + elements.length + "\r\n").getBytes(StandardCharsets.UTF_8));
+
+        for (String element : elements) {
+            writeBulkString(output, element);
+        }
+
+        output.flush();
+    }
+
 }

@@ -8,8 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static redis.protocol.RespWriter.*;
 
-public final class RpushCommand {
-    private RpushCommand() {}
+public final class ListCommands {
+    private ListCommands() {}
 
     public static void executeRpush(OutputStream output, String[] command,ConcurrentHashMap<String, List> listMap) throws IOException {
         if(command.length <  3){
@@ -37,5 +37,17 @@ public final class RpushCommand {
             }
         }
         writeInteger(output, op);
+    }
+
+    public static void executeLRANGE(OutputStream output, String[] command, ConcurrentHashMap<String, List> listMap) throws IOException {
+        if(command.length !=  4){
+            writeError(output, "ERR wrong number of arguments");
+            return;
+        }
+        String listName = command[1];
+        int start = Integer.parseInt(command[2]);
+        int stop = Integer.parseInt(command[3]);
+        List list = listMap.get(listName);
+        writeRESPArray(output, list.getEle(start, stop));
     }
 }
