@@ -31,6 +31,21 @@ public class List{
     }
 
     public String[] getEle(int start, int stop){
+
+        if(stop < 0){
+            stop = this.len + stop;
+            if(stop < 0){
+                stop = 0;
+            }
+        }
+
+        if(start < 0){
+            start = this.len + start;
+            if(start < 0){
+                start = 0;
+            }
+        }
+
         if((start > stop) || start >= this.len){
            return new String[]{};
         }
