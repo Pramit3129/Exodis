@@ -82,5 +82,14 @@ public final class ListCommands {
         writeInteger(output, op);
     }
 
-
+    public static void executeLLEN(OutputStream output, String[] command, ConcurrentHashMap<String, List> listMap) throws IOException {
+        if(command.length != 2){
+            writeError(output, "ERR wrong number of arguments");
+            return;
+        }
+        String listName = command[1];
+        List list = listMap.get(listName);
+        int len = list != null ? list.len : 0;
+        writeInteger(output, len);
+    }
 }

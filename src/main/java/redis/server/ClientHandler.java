@@ -65,6 +65,8 @@ public final class ClientHandler {
                     executeLRANGE(output, command, listMap);
                 }else if(curCommand.equalsIgnoreCase("LPUSH")){
                     executeLpush(output, command, listMap);
+                }else if(curCommand.equalsIgnoreCase("LLEN")){
+                    executeLLEN(output, command, listMap);
                 }
                 else {
                     writeError(output, "ERR unknown command");
