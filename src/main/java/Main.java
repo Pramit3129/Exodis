@@ -34,11 +34,50 @@ public class Main {
         long expiresAt = 0;
     }
 
+    public static class LLNode{
+        String val;
+        LLNode next;
+        public LLNode(String val){
+            this.val = val;
+            this.next = null;
+        }
+    }
+
+    public static class List{
+        int len;
+        LLNode head;
+        LLNode tail;
+        public List(){
+            this.head = null;
+            this.tail = null;
+            this.len = 0;
+        }
+
+        public int push(String ele) {
+            LLNode newNode = new LLNode(ele);
+
+            if (this.head == null) {
+                this.head = newNode;
+                this.tail = newNode;
+            } else {
+                this.tail.next = newNode;
+                this.tail = newNode;
+            }
+
+            this.len++;
+
+            return this.len;
+        }
+
+    }
+
     public static void main(String[] args) {
         System.out.println("Logs from your program will appear here!");
         int port = 6379;
         ConcurrentHashMap<String, RedisValue> mp = new ConcurrentHashMap<>();
+        ConcurrentHashMap<String, List> listMap = new ConcurrentHashMap<>();
         ExecutorService threadPool = Executors.newCachedThreadPool();
+
 
         try (ServerSocket serverSocket = new ServerSocket()) {
             serverSocket.setReuseAddress(true);
@@ -46,14 +85,14 @@ public class Main {
 
             while (true) {
                 Socket client = serverSocket.accept();
-                threadPool.submit(() -> handleClient(client, mp));
+                threadPool.submit(() -> handleClient(client, mp, listMap));
             }
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
         }
     }
 
-    static void handleClient(Socket client, ConcurrentHashMap<String, RedisValue> mp) {
+    static void handleClient(Socket client, ConcurrentHashMap<String, RedisValue> mp, ConcurrentHashMap<String, List> listMap) {
         try (client;
              InputStream input = new BufferedInputStream(client.getInputStream());
              OutputStream output = new BufferedOutputStream(client.getOutputStream())) {
@@ -96,7 +135,9 @@ public class Main {
                     }
                 } else if (curCommand.equalsIgnoreCase("SET")) {
                     executeSet(output, mp, command);
-                } else {
+                } else if(curCommand.equalsIgnoreCase("RPUSH")){
+                     executeRpush(output, command, listMap);
+                }else {
                     writeError(output, "ERR unknown command");
                 }
             }
@@ -105,10 +146,40 @@ public class Main {
         }
     }
 
+    private static void executeRpush(OutputStream output, String[] command,ConcurrentHashMap<String, List> listMap) throws IOException {
+        if(command.length <  3){
+            writeError(output, "ERR wrong number of arguments");
+            return;
+        }
+        String listName = command[1];
+        String element = command[2];
+        int op;
+        synchronized (listMap){
+            if(listMap.containsKey(listName)){
+                List existingList = listMap.get(listName);
+                op = existingList.push(element);
+            }else{
+                // create a new list first
+                List newList = new List();
+                listMap.put(listName, newList);
+                op = newList.push(element);
+            }
+        }
+        writeInteger(output, op);
+
+    }
+
     static void writeError(OutputStream output, String message) throws IOException {
         output.write(("-" + message + "\r\n").getBytes(StandardCharsets.UTF_8));
         output.flush();
     }
+
+
+    static void writeInteger(OutputStream output, int val) throws IOException {
+        output.write((":" + val + "\r\n").getBytes(StandardCharsets.UTF_8));
+        output.flush();
+    }
+
 
     static void writeSimpleString(OutputStream output, String value) throws IOException {
         output.write(("+" + value + "\r\n").getBytes(StandardCharsets.UTF_8));
