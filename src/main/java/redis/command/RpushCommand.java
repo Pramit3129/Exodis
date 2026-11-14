@@ -17,20 +17,25 @@ public final class RpushCommand {
             return;
         }
         String listName = command[1];
-        String element = command[2];
-        int op;
+        // int totalElements = command.length - 2;
+        int op = 0;
         synchronized (listMap){
             if(listMap.containsKey(listName)){
                 List existingList = listMap.get(listName);
-                op = existingList.push(element);
+                for(int i = 2; i < command.length; i++){
+                    String element = command[i];
+                    op = existingList.push(element);
+                }
             }else{
                 // create a new list first
                 List newList = new List();
                 listMap.put(listName, newList);
-                op = newList.push(element);
+                for(int i = 2; i < command.length; i++){
+                    String element = command[i];
+                    op = newList.push(element);
+                }
             }
         }
         writeInteger(output, op);
-
     }
 }
