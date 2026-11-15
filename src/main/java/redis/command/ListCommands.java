@@ -87,7 +87,7 @@ public final class ListCommands {
     }
 
     public static void executeLPOP(OutputStream output, String[] command, ConcurrentHashMap<String, RedisList> listMap) throws IOException {
-        if(command.length != 2){
+        if(command.length < 2){
             writeError(output, "ERR wrong number of arguments");
             return;
         }
@@ -98,14 +98,22 @@ public final class ListCommands {
             writeNullBulkString(output);
             return;
         }
-        String value = redisList.Lpop();
+       if(command.length == 3){
+           int howManyPop = Integer.parseInt(command[2]);
+           String[] popItems = new String[howManyPop];
+           for(int i = 0 ; i < howManyPop;  i++){
+               String value = redisList.Lpop();
+               popItems[i] = value;
+           }
+           writeRESPArray(output, popItems);
+       }else{
+           String value = redisList.Lpop();
 
-        if(value == null){
-            writeNullBulkString(output);
-        }else{
-            writeBulkString(output, value);
-        }
-
-
+           if(value == null){
+               writeNullBulkString(output);
+           }else{
+               writeBulkString(output, value);
+           }
+       }
     }
 }
