@@ -73,10 +73,10 @@ public final class ClientHandler {
                 }else if(curCommand.equalsIgnoreCase("BLPOP")){
                     synchronized (clientQueue){
                         if(clientQueue.isEmpty()){
-                            executeBLPOP(output, command, listMap, true);
+                            executeBLPOP(output, command, listMap);
                             clientQueue.add(client);
                         }else{
-                            executeBLPOP(output, command, listMap, false);
+                            executeBLPOP(output, command, listMap);
                         }
                     }
                 }

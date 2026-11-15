@@ -117,7 +117,7 @@ public final class ListCommands {
        }
     }
 
-    public static void executeBLPOP(OutputStream output, String[] command, ConcurrentHashMap<String, RedisList> listMap, boolean longestClient) throws IOException {
+    public static void executeBLPOP(OutputStream output, String[] command, ConcurrentHashMap<String, RedisList> listMap) throws IOException {
 
         if(command.length < 3){
             writeError(output, "ERR wrong number of arguments");
@@ -152,14 +152,14 @@ public final class ListCommands {
         try {
             String element = redisList.BLPOP(timeoutMillis);
             if (element == null) {
-                writeRESPArray(output, new String[]{});
+                writeNullArray(output);
                 return;
             }
             writeRESPArray(output, new String[]{listName, element});
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            writeRESPArray(output, new String[]{});
+            writeNullArray(output);
         }
 
     }

@@ -43,6 +43,16 @@ public final class RespWriter {
     }
 
 
+    public static void writeNullArray(OutputStream output)
+            throws IOException {
+
+        output.write(
+                "*-1\r\n".getBytes(StandardCharsets.UTF_8)
+        );
+
+        output.flush();
+    }
+
     public static void writeRESPArray(OutputStream output, String[] elements) throws IOException {
         output.write(("*" + elements.length + "\r\n").getBytes(StandardCharsets.UTF_8));
 
