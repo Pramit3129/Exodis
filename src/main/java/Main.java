@@ -5,6 +5,8 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,7 +20,7 @@ public class Main {
         ConcurrentHashMap<String, RedisValue> mp = new ConcurrentHashMap<>();
         ConcurrentHashMap<String, RedisList> listMap = new ConcurrentHashMap<>();
         ExecutorService threadPool = Executors.newCachedThreadPool();
-
+        Queue<Socket> clientWaitingQueue = new LinkedList<>();
 
         try (ServerSocket serverSocket = new ServerSocket()) {
             serverSocket.setReuseAddress(true);
@@ -26,7 +28,7 @@ public class Main {
 
             while (true) {
                 Socket client = serverSocket.accept();
-                threadPool.submit(() -> handleClient(client, mp, listMap));
+                threadPool.submit(() -> handleClient(client, mp, listMap, clientWaitingQueue));
             }
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());

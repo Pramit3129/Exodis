@@ -16,6 +16,8 @@ public class RedisList {
             enqueInternal(element);
         }
 
+        notifyAll();
+
         return this.len;
     }
 
@@ -24,6 +26,8 @@ public class RedisList {
         for(String element : elements){
             pushInternal(element);
         }
+
+        notifyAll();
 
         return this.len;
     }
@@ -59,17 +63,9 @@ public class RedisList {
     }
 
     synchronized public int push(String ele) {
-        LLNode newNode = new LLNode(ele);
+        pushInternal(ele);
 
-        if (this.head == null) {
-            this.head = newNode;
-            this.tail = newNode;
-        } else {
-            this.tail.next = newNode;
-            this.tail = newNode;
-        }
-
-        this.len++;
+        notifyAll();
 
         return this.len;
     }
@@ -151,5 +147,41 @@ public class RedisList {
         }
 
         return temp.val;
+    }
+
+    synchronized public boolean isEmpty() {
+        return this.len == 0;
+    }
+
+    synchronized public String BLPOP(long timeoutMillis) throws InterruptedException {
+
+        long deadline = timeoutMillis == 0
+                ? 0
+                : System.nanoTime() + timeoutMillis * 1_000_000L;
+
+        while (this.len == 0) {
+
+            if (timeoutMillis == 0) {
+
+                // Wait indefinitely
+                wait();
+
+            } else {
+
+                long remainingNanos = deadline - System.nanoTime();
+
+                if (remainingNanos <= 0) {
+                    return null;
+                }
+
+                long remainingMillis = remainingNanos / 1_000_000L;
+
+                int remainingNano = (int) (remainingNanos % 1_000_000L);
+
+                wait(remainingMillis, remainingNano);
+            }
+        }
+
+        return Lpop();
     }
 }

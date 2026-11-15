@@ -116,4 +116,52 @@ public final class ListCommands {
            }
        }
     }
+
+    public static void executeBLPOP(OutputStream output, String[] command, ConcurrentHashMap<String, RedisList> listMap, boolean longestClient) throws IOException {
+
+        if(command.length < 3){
+            writeError(output, "ERR wrong number of arguments");
+            return;
+        }
+
+        double timeoutSeconds;
+
+        try {
+            timeoutSeconds = Double.parseDouble(command[2]);
+        } catch (NumberFormatException e) {
+            writeError(output, "ERR timeout is not a float or out of range");
+            return;
+        }
+
+        if (timeoutSeconds < 0) {
+            writeError(output, "ERR timeout is negative");
+            return;
+        }
+
+        long timeoutMillis = timeoutSeconds == 0
+                ? 0
+                : Math.max(1, (long) Math.ceil(timeoutSeconds * 1000));
+
+        String listName = command[1];
+
+        RedisList redisList = listMap.computeIfAbsent(
+                listName,
+                key -> new RedisList()
+        );
+
+        try {
+            String element = redisList.BLPOP(timeoutMillis);
+            if (element == null) {
+                writeRESPArray(output, new String[]{});
+                return;
+            }
+            writeRESPArray(output, new String[]{listName, element});
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            writeRESPArray(output, new String[]{});
+        }
+
+    }
+
 }
