@@ -20,7 +20,7 @@ public class Main {
         ConcurrentHashMap<String, RedisValue> mp = new ConcurrentHashMap<>();
         ConcurrentHashMap<String, RedisList> listMap = new ConcurrentHashMap<>();
         ExecutorService threadPool = Executors.newCachedThreadPool();
-        Queue<Socket> clientWaitingQueue = new LinkedList<>();
+
 
         try (ServerSocket serverSocket = new ServerSocket()) {
             serverSocket.setReuseAddress(true);
@@ -28,7 +28,7 @@ public class Main {
 
             while (true) {
                 Socket client = serverSocket.accept();
-                threadPool.submit(() -> handleClient(client, mp, listMap, clientWaitingQueue));
+                threadPool.submit(() -> handleClient(client, mp, listMap));
             }
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
