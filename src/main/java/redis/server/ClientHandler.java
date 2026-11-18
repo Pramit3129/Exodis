@@ -85,8 +85,9 @@ public final class ClientHandler {
                     writeError(output, "ERR unknown command");
                 }
             }
-        } catch (IOException e) {
-            System.out.println("Client connection error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Client handler failed:");
+            e.printStackTrace();
         }
     }
 }

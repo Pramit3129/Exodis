@@ -18,6 +18,14 @@ public class RedisStream {
     ) {
         StreamId id = generateId(requestedId);
 
+        // Rule 1: Redis Stream IDs must be greater than 0-0
+        if (id.milliseconds() == 0 && id.sequence() == 0) {
+            throw new IllegalArgumentException(
+                    "The ID specified in XADD must be greater than 0-0"
+            );
+        }
+
+        // Rule 2: New ID must be greater than the last inserted ID
         if (id.compareTo(lastGeneratedId) <= 0) {
             throw new IllegalArgumentException(
                     "The ID specified in XADD is equal or smaller "

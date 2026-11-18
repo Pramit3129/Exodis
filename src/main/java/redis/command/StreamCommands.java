@@ -28,25 +28,42 @@ public final class StreamCommands {
             writeSimpleString(output, "none");
     }
 
-    public static void executeXADD(OutputStream output, String[] command, ConcurrentHashMap<String, RedisStream> streams) throws IOException {
+    public static void executeXADD(
+            OutputStream output,
+            String[] command,
+            ConcurrentHashMap<String, RedisStream> streams
+    ) throws IOException {
 
         if (command.length < 5 || command.length % 2 == 0) {
-            writeError(output, "wrong number of arguments for XADD");
+            writeError(output, "ERR wrong number of arguments for XADD");
             return;
         }
 
         String key = command[1];
         String requestedId = command[2];
 
-        List<String> fields = Arrays.asList(Arrays.copyOfRange(command, 3, command.length));
+        List<String> fields = Arrays.asList(
+                Arrays.copyOfRange(command, 3, command.length)
+        );
 
-        RedisStream stream = streams.computeIfAbsent(key, ignored -> new RedisStream());
+        RedisStream stream = streams.computeIfAbsent(
+                key, ignored -> new RedisStream()
+        );
 
         try {
+            // System.err.println("XADD requested ID: " + requestedId);
+
             StreamId id = stream.add(requestedId, fields);
+
+            // System.err.println("XADD accepted ID: " + id);
+
             writeBulkString(output, id.toString());
+
         } catch (IllegalArgumentException e) {
-            writeError(output, e.getMessage());
+
+            // System.err.println("XADD validation error: " + e.getMessage());
+
+            writeError(output, "ERR "+ e.getMessage());
         }
     }
 
@@ -57,7 +74,7 @@ public final class StreamCommands {
     ) throws IOException {
 
         if (command.length != 4) {
-            writeError(output, "wrong number of arguments for XRANGE");
+            writeError(output, "ERR wrong number of arguments for XRANGE");
             return;
         }
 
@@ -80,7 +97,7 @@ public final class StreamCommands {
             writeStreamEntries(output, stream.range(start, end));
 
         } catch (IllegalArgumentException e) {
-            writeError(output, e.getMessage());
+            writeError(output, "ERR "+e.getMessage());
         }
     }
 
@@ -93,7 +110,7 @@ public final class StreamCommands {
         // Initial version: XREAD STREAMS key id
         if (command.length != 4 ||
                 !command[1].equalsIgnoreCase("STREAMS")) {
-            writeError(output, "invalid XREAD arguments");
+            writeError(output, "ERR invalid XREAD arguments");
             return;
         }
 
@@ -125,7 +142,7 @@ public final class StreamCommands {
             writeStreamEntries(output, result);
 
         } catch (IllegalArgumentException e) {
-            writeError(output, e.getMessage());
+            writeError(output, "ERR "+e.getMessage());
         }
     }
 }

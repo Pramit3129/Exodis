@@ -13,7 +13,25 @@ public final class RespWriter {
     public static void writeError(OutputStream output, String message) throws IOException {
         output.write(("-" + message + "\r\n").getBytes(StandardCharsets.UTF_8));
         output.flush();
+//        String response = "-ERR " + message + "\r\n";
+//
+//        output.write(
+//                response.getBytes(StandardCharsets.UTF_8)
+//        );
     }
+//    public static void writeError(
+//            OutputStream output,
+//            String message
+//    ) throws IOException {
+//
+//        String response = "-ERR " + message + "\r\n";
+//
+//        output.write(
+//                response.getBytes(StandardCharsets.UTF_8)
+//        );
+//
+//        output.flush();
+//    }
 
 
     public static void writeInteger(OutputStream output, int val) throws IOException {
