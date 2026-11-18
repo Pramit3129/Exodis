@@ -2,6 +2,8 @@ package redis.server;
 
 import redis.command.StreamCommands;
 import redis.datastructure.RedisList;
+import redis.datastructure.RedisStream;
+import redis.datastructure.StreamEntry;
 import redis.model.RedisValue;
 
 import java.io.*;
@@ -19,7 +21,7 @@ import static redis.storage.StorageUtils.getLiveEntry;
 public final class ClientHandler {
     private ClientHandler() {}
 
-    public static void handleClient(Socket client, ConcurrentHashMap<String, RedisValue> mp, ConcurrentHashMap<String, RedisList> listMap) {
+    public static void handleClient(Socket client, ConcurrentHashMap<String, RedisValue> mp, ConcurrentHashMap<String, RedisList> listMap, ConcurrentHashMap<String, RedisStream> stream) {
         try (client;
              InputStream input = new BufferedInputStream(client.getInputStream());
              OutputStream output = new BufferedOutputStream(client.getOutputStream())) {
@@ -60,7 +62,7 @@ public final class ClientHandler {
                             writeNullBulkString(output);
                         }
                     }
-                } else if (curCommand.equalsIgnoreCase("SET")) {
+                }else if (curCommand.equalsIgnoreCase("SET")) {
                     executeSet(output, mp, command);
                 } else if(curCommand.equalsIgnoreCase("RPUSH")){
                      executeRpush(output, command, listMap);
@@ -75,7 +77,9 @@ public final class ClientHandler {
                 }else if(curCommand.equalsIgnoreCase("BLPOP")){
                     executeBLPOP(output, command, listMap);
                 }else if(curCommand.equalsIgnoreCase("TYPE")){
-                    handleType(output, command, mp, listMap);
+                    handleType(output, command, mp, listMap, stream);
+                }else if(curCommand.equalsIgnoreCase("XADD")){
+                    executeXADD(output, command, stream);
                 }
                 else {
                     writeError(output, "ERR unknown command");

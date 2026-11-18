@@ -1,4 +1,5 @@
 import redis.datastructure.RedisList;
+import redis.datastructure.RedisStream;
 import redis.model.RedisValue;
 
 import java.io.*;
@@ -19,6 +20,7 @@ public class Main {
         int port = 6379;
         ConcurrentHashMap<String, RedisValue> mp = new ConcurrentHashMap<>();
         ConcurrentHashMap<String, RedisList> listMap = new ConcurrentHashMap<>();
+        ConcurrentHashMap<String, RedisStream> streams = new ConcurrentHashMap<>();
         ExecutorService threadPool = Executors.newCachedThreadPool();
 
 
@@ -28,7 +30,7 @@ public class Main {
 
             while (true) {
                 Socket client = serverSocket.accept();
-                threadPool.submit(() -> handleClient(client, mp, listMap));
+                threadPool.submit(() -> handleClient(client, mp, listMap, streams));
             }
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());

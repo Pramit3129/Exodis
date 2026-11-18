@@ -1,8 +1,11 @@
 package redis.protocol;
 
+import redis.datastructure.StreamEntry;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 public final class RespWriter {
     private RespWriter() {}
@@ -61,6 +64,42 @@ public final class RespWriter {
         }
 
         output.flush();
+    }
+
+    private static void writeAscii(
+            OutputStream output,
+            String value
+    ) throws IOException {
+        output.write(value.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    public static void writeArrayHeader(
+            OutputStream output,
+            int count
+    ) throws IOException {
+        writeAscii(output, "*" + count + "\r\n");
+    }
+
+    public static void writeStreamEntries(
+            OutputStream output,
+            List<StreamEntry> entries
+    ) throws IOException {
+
+        writeArrayHeader(output, entries.size());
+
+        for (StreamEntry entry : entries) {
+            writeArrayHeader(output, 2);
+
+            writeBulkString(output, entry.id().toString());
+
+            List<String> fields = entry.fieldsAndValues();
+
+            writeArrayHeader(output, fields.size());
+
+            for (String field : fields) {
+                writeBulkString(output, field);
+            }
+        }
     }
 
 }
